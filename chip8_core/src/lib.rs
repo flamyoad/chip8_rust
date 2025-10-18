@@ -1,5 +1,3 @@
-use core::num;
-
 use rand::random;
 
 const FONTSET_SIZE: usize = 80;
@@ -79,6 +77,20 @@ impl Emu {
         self.ram[..FONTSET_SIZE].copy_from_slice(&FONTSET);
     }
 
+    pub fn get_display(&self) -> &[bool] {
+        &self.screen
+    }
+
+    pub fn keypress(&mut self, idx: usize, pressed: bool) {
+        self.keys[idx] = pressed;
+    }
+
+    pub fn load(&mut self, data: &[u8]) {
+        let start = START_ADDR as usize;
+        let end = (START_ADDR as usize) + data.len();
+        self.ram[start..end].copy_from_slice(data); 
+    }
+
     pub fn tick(&mut self) {
         let op = self.fetch();
         self.execute(op);
@@ -91,7 +103,7 @@ impl Emu {
 
         if self.st > 0 {
             if self.st == 1 {
-                // beep
+                // todo: make sound
             }
             self.st -= 1;
         }
@@ -110,6 +122,8 @@ impl Emu {
         let digit2 = (op & 0x0F00) >> 8;
         let digit3 = (op & 0x00F0) >> 4;
         let digit4 = op & 0x000F;
+
+        println!("Opcode: 0x{:04X}", op);
 
         match(digit1, digit2, digit3, digit4) {
             // 0000 - NOP
@@ -172,7 +186,7 @@ impl Emu {
                 let x = digit2 as usize;
                 let nn = (op & 0xFF) as u8;
                 self.v_reg[x] = nn;
-            }
+            },
 
             // 7XNN - VX += NN
             // This operation adds the given value to the VX register
@@ -201,7 +215,7 @@ impl Emu {
             (8, _, _, 2) => {
                 let x = digit2 as usize;
                 let y = digit3 as usize;
-                self.v_reg[x] += self.v_reg[y];
+                self.v_reg[x] &= self.v_reg[y];
             },
 
             // 8XY3 - VX is set to the bitwise (XOR) of VX and VY
@@ -428,7 +442,7 @@ impl Emu {
                 for idx in 0..=x {
                     self.ram[i + idx] = self.v_reg[idx];
                 }
-            }
+            },
 
             // FX65 - Load I into V0 - VX
             (0xF, _, 6, 5) => {
